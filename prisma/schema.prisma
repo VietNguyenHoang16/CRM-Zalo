@@ -39,15 +39,27 @@ model CustomerSource {
   @@map("customer_sources")
 }
 
-model MessageTemplate {
-  id        String          @id @default(cuid())
-  title     String
-  content   String
-  group     TemplateGroup
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+model TemplateCategory {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now())
 
-  logs      ActionLog[]
+  templates MessageTemplate[]
+
+  @@map("template_categories")
+}
+
+model MessageTemplate {
+  id         String           @id @default(cuid())
+  title      String
+  content    String
+  categoryId String
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  category   TemplateCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  logs       ActionLog[]
 
   @@map("message_templates")
 }
@@ -109,11 +121,4 @@ enum ActionType {
   MESSAGE_SENT
   STATUS_CHANGE
   APPOINTMENT_SET
-}
-
-enum TemplateGroup {
-  CHAO_MOI
-  RECONNECT
-  CHAM_SOC
-  KHAC
 }

@@ -1,6 +1,5 @@
 export type CustomerStatus = 'NEW' | 'PENDING_ZALO' | 'ZALO_CONNECTED' | 'PENDING_CALL' | 'CONTACTED' | 'MESSAGED' | 'PAUSED' | 'DEAL_WON' | 'DEAL_LOST'
 export type ActionType = 'ZALO_SENT' | 'ZALO_ACCEPTED' | 'CALL_MADE' | 'CALL_MISSED' | 'MESSAGE_SENT' | 'STATUS_CHANGE' | 'APPOINTMENT_SET'
-export type TemplateGroup = 'CHAO_MOI' | 'RECONNECT' | 'CHAM_SOC' | 'KHAC'
 
 export const STATUS_LABELS: Record<CustomerStatus, string> = {
   NEW: 'Mới',
@@ -24,13 +23,6 @@ export const STATUS_COLORS: Record<CustomerStatus, string> = {
   PAUSED: 'border-l-gray-300 bg-gray-100',
   DEAL_WON: 'border-l-emerald-600 bg-emerald-50',
   DEAL_LOST: 'border-l-red-500 bg-red-50',
-}
-
-export const TEMPLATE_GROUP_LABELS: Record<TemplateGroup, string> = {
-  CHAO_MOI: 'Chào mời',
-  RECONNECT: 'Reconnect',
-  CHAM_SOC: 'Chăm sóc',
-  KHAC: 'Khác',
 }
 
 export const ACTION_LABELS: Record<ActionType, string> = {

@@ -9,7 +9,7 @@ interface Customer {
 }
 
 interface Template {
-  id: string; title: string; content: string; group: string
+  id: string; title: string; content: string; category: { name: string } | null
 }
 
 export function useCustomerDetail(customerId: string) {

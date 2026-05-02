@@ -10,10 +10,6 @@ export const ActionTypeEnum = z.enum([
   'MESSAGE_SENT', 'STATUS_CHANGE', 'APPOINTMENT_SET',
 ])
 
-export const TemplateGroupEnum = z.enum([
-  'CHAO_MOI', 'RECONNECT', 'CHAM_SOC', 'KHAC',
-])
-
 export const createCustomerSchema = z.object({
   name: z.string().min(1, 'Tên shop là bắt buộc'),
   phone: z.string().regex(/^[0-9]{9,11}$/, 'Số điện thoại không hợp lệ (9-11 chữ số)'),
@@ -42,7 +38,7 @@ export const createActionSchema = z.object({
 export const createTemplateSchema = z.object({
   title: z.string().min(1, 'Tiêu đề là bắt buộc'),
   content: z.string().min(1, 'Nội dung là bắt buộc'),
-  group: TemplateGroupEnum,
+  categoryId: z.string().min(1, 'Danh mục là bắt buộc'),
 })
 
 export const createSourceSchema = z.object({

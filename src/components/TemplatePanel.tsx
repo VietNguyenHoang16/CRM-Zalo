@@ -1,11 +1,9 @@
 'use client'
 import { useState } from 'react'
 import { replaceVariables } from '@/lib/utils'
-import { TEMPLATE_GROUP_LABELS } from '@/lib/utils'
-import type { TemplateGroup } from '@/lib/utils'
 
 interface Template {
-  id: string; title: string; content: string; group: string
+  id: string; title: string; content: string; category: { name: string } | null
 }
 
 interface Customer {
@@ -58,7 +56,7 @@ export default function TemplatePanel({ templates, customer, selectedTemplate, o
             <button key={t.id} onClick={() => onSelect({ id: t.id, title: t.title, content: t.content })}
               style={{ textAlign: 'left', padding: '12px 16px', background: selectedTemplate?.id === t.id ? '#eff6ff' : '#f8fafc', border: 'none', borderRadius: 10, cursor: 'pointer', transition: 'all 0.2s' }}>
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t.title}</div>
-              <span className={`group-badge group-${t.group}`}>{TEMPLATE_GROUP_LABELS[t.group as TemplateGroup] || t.group}</span>
+              <span className="source-badge">{t.category?.name || 'Không danh mục'}</span>
             </button>
           ))}
         </div>
