@@ -18,6 +18,8 @@ export default function CustomersPage() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', note: '', sourceId: '' })
   const [error, setError] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchSources = () => apiFetch<Array<{id: string, name: string}>>('/api/sources').then(setSources).catch(() => {})
   const fetchCustomers = () => {
@@ -25,6 +27,16 @@ export default function CustomersPage() {
     if (filterStatus) params.set('status', filterStatus)
     if (filterSource) params.set('sourceId', filterSource)
     apiFetch<Customer[]>(`/api/customers${params.toString() ? '?' + params.toString() : ''}`).then(setCustomers).catch(() => {})
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      await apiFetch(`/api/customers/${deleteTarget.id}`, { method: 'DELETE' })
+      setDeleteTarget(null)
+      fetchCustomers()
+    } catch { setDeleting(false) }
   }
 
   useEffect(() => { fetchSources() }, [])
@@ -123,7 +135,15 @@ export default function CustomersPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
         {customers.map(c => (
-          <div key={c.id} onClick={() => setSelectedCustomerId(c.id)} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+          <div key={c.id} style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }}
+              title="Xóa khách hàng"
+              style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 28, height: 28, borderRadius: 6, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700 }}
+            >
+              ✕
+            </button>
+            <div onClick={() => setSelectedCustomerId(c.id)} style={{ textDecoration: 'none', cursor: 'pointer' }}>
             <div className="customer-card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -144,6 +164,7 @@ export default function CustomersPage() {
                 Ngày tạo: {new Date(c.createdAt).toLocaleDateString('vi-VN')}
               </div>
             </div>
+            </div>
           </div>
         ))}
       </div>
@@ -162,6 +183,31 @@ export default function CustomersPage() {
 
       {selectedCustomerId && (
         <CustomerModal customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} />
+      )}
+
+      {deleteTarget && (
+        <div onClick={() => { if (!deleting) setDeleteTarget(null) }} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 16, padding: 28, maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#ef4444" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1e293b', margin: 0 }}>Xác nhận xóa</h3>
+            </div>
+            <p style={{ color: '#475569', fontSize: 14, lineHeight: 1.6, margin: '0 0 8px 0' }}>
+              Bạn có chắc chắn muốn xóa khách hàng <strong>{deleteTarget.name}</strong> ({deleteTarget.phone}) không?
+            </p>
+            <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 24px 0' }}>Hành động này không thể hoàn tác. Tất cả lịch sử và lịch hẹn liên quan cũng sẽ bị xóa.</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="btn btn-secondary">Hủy</button>
+              <button onClick={confirmDelete} disabled={deleting} className="btn btn-danger" style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
