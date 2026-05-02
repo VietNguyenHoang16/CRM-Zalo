@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+model Customer {
+  id           String    @id @default(cuid())
+  name         String
+  phone        String    @unique
+  email        String?
+  address      String?
+  note         String?
+  sourceId     String?
+  status       CustomerStatus @default(NEW)
+  zaloSentAt   DateTime?
+  zaloAcceptedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  source       CustomerSource? @relation(fields: [sourceId], references: [id])
+  logs         ActionLog[]
+  appointments Appointment[]
+
+  @@map("customers")
+}
+
+model CustomerSource {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  customers Customer[]
+
+  @@map("customer_sources")
+}
+
+model MessageTemplate {
+  id        String          @id @default(cuid())
+  title     String
+  content   String
+  group     TemplateGroup
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  logs      ActionLog[]
+
+  @@map("message_templates")
+}
+
+model ActionLog {
+  id          String   @id @default(cuid())
+  customerId  String
+  action      ActionType
+  note        String?
+  templateId  String?
+  createdAt   DateTime @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  template    MessageTemplate? @relation(fields: [templateId], references: [id])
+
+  @@map("action_logs")
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  customerId  String
+  scheduledAt DateTime
+  note        String?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("appointments")
+}
+
+model Settings {
+  id        String   @id @default("global")
+  tgChoAloSauKB         Int @default(60)
+  tgChoNhantinSauGoiKhongNghe Int @default(30)
+  tgLapLichNhantinLan2  Int @default(2)
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+enum CustomerStatus {
+  NEW
+  PENDING_ZALO
+  ZALO_CONNECTED
+  PENDING_CALL
+  CONTACTED
+  MESSAGED
+  PAUSED
+  DEAL_WON
+  DEAL_LOST
+}
+
+enum ActionType {
+  ZALO_SENT
+  ZALO_ACCEPTED
+  CALL_MADE
+  CALL_MISSED
+  MESSAGE_SENT
+  STATUS_CHANGE
+  APPOINTMENT_SET
+}
+
+enum TemplateGroup {
+  CHAO_MOI
+  RECONNECT
+  CHAM_SOC
+  KHAC
+}

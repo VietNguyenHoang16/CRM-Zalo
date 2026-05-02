@@ -1,0 +1,227 @@
+ĐẶC TẢ CHỨC NĂNG ỨNG DỤNG
+Tên ứng dụng (dự kiến) CRM Kết Bạn Zalo
+Nền tảng Web hoặc Mobile App (ưu tiên có push notification)
+Mục tiêu Hỗ trợ nhân viên kinh doanh quản lý danh sách khách hàng tiềm năng, tự động hoá lịch nhắc kết bạn Zalo, gọi điện, nhắn tin theo kịch bản, giúp không bỏ sót khách và tối ưu tỷ lệ chuyển đổi.
+
+1. CÁC ĐỐI TƯỢNG CHÍNH
+1.1 Khách hàng
+Mỗi khách hàng có các thông tin
+
+Thông tin cơ bản Họ tên (bắt buộc), số điện thoại (bắt buộc, unique trong hệ thống, có validate định dạng), email (tuỳ chọn), địa chỉ, ghi chú.
+
+Nguồn khách Chọn từ danh sách nguồn đã tạo (Facebook, Website, Zalo, Giới thiệu, Event…). Hỗ trợ nhập nguồn tự do nhưng nên có danh mục chuẩn.
+
+Trạng thái tương tác Luôn được cập nhật theo quy trình
+
+Mới (chưa làm gì)
+
+Chờ kết bạn Zalo (đã gửi lời mời kết bạn, chưa được chấp nhận)
+
+Đã kết bạn Zalo (khách đã đồng ý)
+
+Chờ gọi lại (đã alo nhưng không nghe máy)
+
+Đã liên hệ (đã nói chuyện thành công)
+
+Đã nhắn tin (đã gửi tin nhắn theo mẫu)
+
+Tạm dừng  Chốt deal  Thất bại (tuỳ chọn mở rộng)
+
+Lịch sử hành động Mỗi tương tác (gửi KB Zalo, Gọi, Nhắn tin) đều được ghi log kèm thời gian, nội dung mẫu đã dùng (nếu có) và ghi chú.
+
+1.2 Nguồn khách hàng
+Danh sách nguồn do người dùng tự định nghĩa, có thể thêmsửaxoá. Mỗi nguồn có Mã nguồn, Tên nguồn.
+
+1.3 Mẫu tin nhắn
+Các mẫu câu viết sẵn, phân loại theo nhóm
+
+Chào mời (gửi lần đầu sau khi không kết bạn được, hoặc sau khi kết bạn)
+
+Reconnect (gửi khi khách lâu không phản hồi)
+
+Chăm sóc (gửi sau khi đã liên hệ, duy trì quan hệ)
+
+Khác (tuỳ chỉnh)
+
+Mỗi mẫu có Tiêu đề (dễ nhận diện), Nội dung (có thể chứa biến động như {ten_khach}, {so_dt}, hỗ trợ xuống dòng).
+
+1.4 Cấu hình thời gian chờ (Settings)
+Các tham số toàn cục (có thể chỉnh sửa)
+
+TG_CHO_ALO_SAU_KB (phútgiờ) Thời gian sau khi gửi lời mời KB Zalo, nếu khách chưa đồng ý sẽ nhắc gọi alo. Mặc định 60 phút.
+
+TG_CHO_NHANTIN_SAU_GOI_KHONG_NGHE (phút) Khi gọi không trả lời, sau bao lâu nhắc nhắn tin. Mặc định 30 phút.
+
+TG_LAP_LICH_NHAN_TIN_LAN_2 (ngày) Sau khi nhắn tin lần 1 mà chưa có phản hồi, nhắc nhắn lại lần 2. Mặc định 2 ngày.
+
+Các mốc thời gian khác nếu cần.
+
+2. QUY TRÌNH TƯƠNG TÁC CHI TIẾT
+Ứng dụng hoạt động như một “trợ lý nhắc việc”. Mọi hành động thực tế (gửi KB Zalo, gọi điện, copy mẫu tin nhắn gửi qua ZaloSMS) đều do người dùng tự thực hiện, sau đó thao tác “đánh dấu” vào app để hệ thống ghi nhận và tính lịch tiếp theo.
+
+Bước 1 Nhập khách hàng mới
+Người dùng vào form thêm khách, điền thông tin, chọn nguồn. Hệ thống kiểm tra trùng số điện thoại.
+
+Trạng thái ban đầu là Mới. App hiển thị nút “Gửi kết bạn Zalo” (hoặc “Đã gửi KB Zalo”).
+
+Bước 2 Gửi kết bạn Zalo
+Người dùng mở Zalo trên điện thoại, gửi lời mời kết bạn đến số vừa nhập.
+
+Quay lại app, bấm “Đã gửi kết bạn”. Hệ thống
+
+Đổi trạng thái thành Chờ kết bạn Zalo.
+
+Ghi log “Đã gửi KB Zalo lúc [giờ]”.
+
+Kích hoạt bộ đếm TG_CHO_ALO_SAU_KB (vd 60 phút). Sau thời gian này, nếu trạng thái vẫn là “Chờ kết bạn Zalo” (tức chưa được accept), hệ thống sẽ tạo nhiệm vụ “Alo ngay” và gửi thông báo đẩy.
+
+Bước 3 Kiểm tra kết bạn & Alo
+Khi nhận thông báo, người dùng kiểm tra Zalo xem khách đã đồng ý chưa.
+
+Nếu đã đồng ý vào app, tại khách hàng đó bấm “Đã kết bạn” → trạng thái chuyển thành Đã kết bạn Zalo. Có thể tiếp tục nhắn tin mẫu chào hỏi, hoặc gọi trực tiếp (nếu muốn).
+
+Nếu chưa đồng ý bấm vào nút “Alo cho khách” (hành động gọi điện thủ công). Sau cuộc gọi
+
+Nếu có nghe máy và trao đổi bấm “Đã nói chuyện”, trạng thái thành Đã liên hệ. Có thể thêm ghi chú nội dung.
+
+Nếu không nghe máy (không trả lời, tắt máy) bấm “Gọi không được” → hệ thống ghi log, trạng thái chuyển thành Chờ nhắn tin (lần 1). Đồng thời kích hoạt lịch nhắc nhắn tin theo TG_CHO_NHANTIN_SAU_GOI_KHONG_NGHE (30 phút).
+
+Bước 4 Nhắn tin mẫu
+Khi đến hạn, app đẩy thông báo “Đến hạn nhắn tin cho Nguyễn Văn A – 090xxxxxx”. Bấm vào thông báo, mở màn hình chi tiết khách hàng.
+
+Tại đây, hiển thị danh sách Mẫu tin nhắn phù hợp (dựa trên ngữ cảnh ví dụ “Chào mời” nếu là lần nhắn đầu sau khi gọi không được, “Reconnect” nếu là lần 2). Người dùng chọn mẫu, nội dung tự động được điền vào clipboard hoặc hiển thị để copy.
+
+Người dùng mở Zalo (hoặc ứng dụng SMS), dán nội dung và gửi.
+
+Quay lại app, bấm “Đã gửi tin nhắn”. Hệ thống
+
+Cập nhật trạng thái thành Đã nhắn tin (lần 1).
+
+Lưu mẫu tin nhắn đã dùng vào lịch sử.
+
+Nếu cần, khởi tạo lịch nhắn lần 2 sau TG_LAP_LICH_NHAN_TIN_LAN_2 (ví dụ 2 ngày). Khi đó, quy trình lặp lại đến hạn → chọn mẫu → gửi → đánh dấu.
+
+Bước 5 Theo dõi & kết thúc
+Sau mỗi lần nhắn tin hoặc gọi, người dùng có thể chủ động cập nhật trạng thái
+
+“Đã kết nối thành công” (Đã liên hệ)
+
+“Khách không quan tâm” (Thất bại)
+
+“Hẹn gọi lại” → set ngày giờ hẹn, đến giờ sẽ có nhắc riêng.
+
+Mọi trạng thái đều hiển thị màu sắc trực quan trên danh sách.
+
+3. CÁC MODULE CHỨC NĂNG
+3.1 Dashboard (Tổng quan)
+Hiển thị số liệu trong ngày
+
+Khách mới thêm hôm nay.
+
+Số khách cần Alo ngay vì chưa kết bạn Zalo sau X phút.
+
+Số khách cần Nhắn tin đến hạn (phân theo lần 1, lần 2).
+
+Tổng số khách đã liên hệ, tỷ lệ chuyển đổi.
+
+Danh sách nhiệm vụ ưu tiên (sắp xếp theo deadline).
+
+Bấm vào mỗi mục để xem danh sách chi tiết.
+
+3.2 Quản lý danh sách khách hàng
+Giao diện dạng bảngthẻ, có thể lọc theo
+
+Trạng thái, Nguồn, Ngày tạo, Tên, SĐT.
+
+Đánh dấu màu theo trạng thái.
+
+Xem chi tiết khách hàng thông tin cơ bản, lịch sử timeline (giống chat log).
+
+Thao tác nhanh Gửi KB Zalo, Gọi, Nhắn tin, Cập nhật trạng thái.
+
+3.3 Quản lý nguồn khách
+CRUD danh sách nguồn. Khi xóa nguồn, các khách hàng thuộc nguồn đó sẽ được gán “Nguồn khác” hoặc không thay đổi (chỉ ẩn).
+
+3.4 Quản lý mẫu tin nhắn
+Danh sách mẫu, phân nhóm, tìm kiếm.
+
+Form thêmsửa tiêu đề, nội dung (textarea), chọn nhóm. Hỗ trợ biến {ten}, {sdt}, {nguon}.
+
+Xem trước mẫu với dữ liệu mẫu.
+
+Khi chọn mẫu để gửi, nội dung được tự động thay thế biến bằng thông tin thực của khách.
+
+3.5 Lịch & Nhắc hẹn
+Giao diện lịch (calendar) hiển thị các mốc cần thực hiện (alo, nhắn tin, gọi lại theo hẹn).
+
+Có thể thêm sự kiện hẹn gọi lại thủ công kèm ghi chú.
+
+Hệ thống tự động tạo nhắc nhở dựa trên cấu hình và trạng thái.
+
+3.6 Cài đặt
+Cho phép chỉnh sửa các tham số thời gian chờ.
+
+Quản lý danh sách trạng thái tuỳ chỉnh (nếu cần mở rộng).
+
+Cấu hình thông báo đẩy (bậttắt, âm thanh).
+
+4. YÊU CẦU VỀ THÔNG BÁO (PUSH NOTIFICATION)
+Khi nhiệm vụ đến hạn, server gửi push đến thiết bị của người dùng với nội dung
+
+“Đã 60 phút từ khi gửi KB Zalo cho Trần Thị B. Hãy alo ngay!”
+“Đến hạn nhắn tin cho Lê Văn C (lần 1). SĐT 090….”
+
+Bấm vào thông báo mở thẳng màn hình chi tiết khách hàng đó.
+
+Nếu người dùng không thao tác, sau 15 phút có thể gửi nhắc lại 1 lần (tuỳ chọn cấu hình).
+
+5. LUỒNG SỬ DỤNG CHÍNH (USE CASE)
+UC1 Thêm khách và kích hoạt quy trình
+
+User bấm “Thêm khách”.
+
+Nhập tên, số ĐT, chọn nguồn, bấm Lưu.
+
+Hệ thống hiển thị nút “Gửi kết bạn Zalo”.
+
+User gửi lời mời KB trên app Zalo thật, rồi bấm “Đã gửi KB”.
+
+Hệ thống ghi nhận, đặt lịch nhắc alo sau 60’.
+
+UC2 Xử lý nhắc alo
+
+Điện thoại rung thông báo “Alo ngay cho A”.
+
+User mở app, vào danh sách “Cần alo”.
+
+User gọi điện cho khách. Nếu khách không bắt máy → bấm “Gọi không được”.
+
+Hệ thống lên lịch nhắn tin sau 30’.
+
+UC3 Nhắn tin theo mẫu
+
+Nhận thông báo đến hạn nhắn tin.
+
+Mở chi tiết khách, chọn tab “Mẫu tin nhắn”, chọn mẫu “Chào mời sản phẩm”.
+
+Nội dung hiển thị kèm nút “Copy”. User copy, qua Zalo gửi.
+
+Quay lại app, bấm “Đã gửi tn”. Hệ thống cập nhật, lên lịch nhắn lần 2 sau 2 ngày nếu cần.
+
+6. GIAO DIỆN THAM KHẢO (MÔ TẢ)
+Danh sách khách Danh sách dạng thẻ, mỗi thẻ có tên, SĐT, trạng thái + viền màu, đồng hồ đếm ngược đến hạn hành động kế tiếp, nút hành động nhanh (Alo, Nhắn tin).
+
+Chi tiết khách Phía trên là info, timeline cuộn dọc như chat. Bên dưới màn hình luôn có 2-3 nút “Alo”, “Nhắn tin”, “Cập nhật”.
+
+Mẫu tin nhắn popup Danh sách cuộn ngang các mẫu, bấm chọn → nội dung hiện ra, nút Copy lớn.
+
+Dashboard Widget dạng số đếm nhiệm vụ khẩn, biểu đồ đơn giản.
+
+7. YÊU CẦU PHI CHỨC NĂNG
+Dữ liệu an toàn, có backup thường xuyên.
+
+App hoạt động offline (lưu nhiệm vụ tạm thời, đồng bộ khi online). Cần thông báo đẩy yêu cầu server.
+
+Tốc độ phản hồi nhanh.
+
+Tương thích Android, iOS nếu làm mobile; Web responsive nếu làm web.

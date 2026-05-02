@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --use-npm)",
+      "Read(//c/Users/ASUS/Desktop/Kinh doanh/**)",
+      "Bash(npx create-next-app@latest CRMZaloApp --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --use-npm)",
+      "Bash(mkdir crm_zalo_app *)",
+      "Bash(npx create-next-app@latest crm-zalo --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --use-npm)",
+      "Bash(mv \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\Kinh doanh\\\\crm-zalo\"/* \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\Kinh doanh\\\\CRMZalo/\")",
+      "Bash(mv \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\Kinh doanh\\\\crm-zalo\"/.* \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\Kinh doanh\\\\CRMZalo/\")",
+      "Bash(rmdir \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\Kinh doanh\\\\crm-zalo\")",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3000/api/dashboard)",
+      "Bash(curl *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"next\")"
+    ]
+  }
+}
