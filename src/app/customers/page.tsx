@@ -35,6 +35,7 @@ export default function CustomersPage() {
     try {
       await apiFetch(`/api/customers/${deleteTarget.id}`, { method: 'DELETE' })
       setDeleteTarget(null)
+      setDeleting(false)
       fetchCustomers()
     } catch { setDeleting(false) }
   }
