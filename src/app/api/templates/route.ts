@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       include: { category: true },
       orderBy: { title: 'asc' },
     })
-    return NextResponse.json(templates)
+    return NextResponse.json(templates, { headers: { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=30' } })
   } catch {
     return NextResponse.json({ error: 'Lỗi máy chủ nội bộ' }, { status: 500 })
   }

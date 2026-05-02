@@ -9,13 +9,37 @@ interface DashboardStats {
 
 interface UrgentCustomer { id: string; name: string; phone: string; status: string }
 
+const emptyStats: DashboardStats = { todayCustomers: 0, pendingZalo: 0, pendingCall: 0, contactedCount: 0, messagedCount: 0, total: 0, conversionRate: 0 }
+
+const s: Record<string, React.CSSProperties> = {
+  emptyText: { color: '#94a3b8', textAlign: 'center', padding: '40px 0' },
+  urgentList: { display: 'flex', flexDirection: 'column' as const, gap: 12 },
+  urgentItem: { display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: '#fef3c7', borderRadius: 10, border: '1px solid #fde68a' as const },
+  avatar: { width: 40, height: 40, borderRadius: 10, background: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 },
+  avatarRight: { flex: 1 },
+  cardName: { fontWeight: 600, color: '#1e293b' },
+  cardPhone: { fontSize: 13, color: '#64748b' },
+  overviewGrid: { display: 'grid', gap: 16 },
+  statRow: { display: 'flex', justifyContent: 'space-between', padding: 16, background: '#f8fafc', borderRadius: 10 },
+  statLabel: { color: '#64748b' },
+  statValue: { fontWeight: 700, color: '#1e293b' },
+  statValueGreen: { fontWeight: 700, color: '#16a34a' },
+  statValuePurple: { fontWeight: 700, color: '#7c3aed' },
+  statValueBlue: { fontWeight: 700, color: '#2563eb' },
+}
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({ todayCustomers: 0, pendingZalo: 0, pendingCall: 0, contactedCount: 0, messagedCount: 0, total: 0, conversionRate: 0 })
+  const [stats, setStats] = useState<DashboardStats>(emptyStats)
   const [urgentCustomers, setUrgentCustomers] = useState<UrgentCustomer[]>([])
 
   useEffect(() => {
-    apiFetch<DashboardStats>('/api/dashboard').then(setStats).catch(() => {})
-    apiFetch<UrgentCustomer[]>('/api/customers?status=PENDING_ZALO').then(data => setUrgentCustomers(data.slice(0, 6))).catch(() => {})
+    Promise.all([
+      apiFetch<DashboardStats>('/api/dashboard'),
+      apiFetch<UrgentCustomer[]>('/api/customers?status=PENDING_ZALO'),
+    ]).then(([statsData, urgentData]) => {
+      setStats(statsData)
+      setUrgentCustomers(urgentData.slice(0, 6))
+    }).catch(() => {})
   }, [])
 
   return (
@@ -71,18 +95,16 @@ export default function DashboardPage() {
         <div className="card">
           <div className="card-title">Khách cần xử lý ngay</div>
           {urgentCustomers.length === 0 ? (
-            <p style={{ color: '#94a3b8', textAlign: 'center', padding: '40px 0' }}>Không có khách cần xử lý</p>
+            <p style={s.emptyText}>Không có khách cần xử lý</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={s.urgentList}>
               {urgentCustomers.map(c => (
                 <Link href={`/customers/${c.id}`} key={c.id} style={{ textDecoration: 'none' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: '#fef3c7', borderRadius: 10, border: '1px solid #fde68a' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fbbf24', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600 }}>
-                      {c.name.charAt(0)}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: '#1e293b' }}>{c.name}</div>
-                      <div style={{ fontSize: 13, color: '#64748b' }}>{c.phone}</div>
+                  <div style={s.urgentItem}>
+                    <div style={s.avatar}>{c.name.charAt(0)}</div>
+                    <div style={s.avatarRight}>
+                      <div style={s.cardName}>{c.name}</div>
+                      <div style={s.cardPhone}>{c.phone}</div>
                     </div>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#94a3b8" width="20" height="20">
                       <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -96,23 +118,11 @@ export default function DashboardPage() {
 
         <div className="card">
           <div className="card-title">Tổng quan</div>
-          <div style={{ display: 'grid', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: 10 }}>
-              <span style={{ color: '#64748b' }}>Tổng khách hàng</span>
-              <span style={{ fontWeight: 700, color: '#1e293b' }}>{stats.total}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: 10 }}>
-              <span style={{ color: '#64748b' }}>Tỷ lệ chuyển đổi</span>
-              <span style={{ fontWeight: 700, color: '#16a34a' }}>{stats.conversionRate}%</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: 10 }}>
-              <span style={{ color: '#64748b' }}>Đã nhắn tin</span>
-              <span style={{ fontWeight: 700, color: '#7c3aed' }}>{stats.messagedCount}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', background: '#f8fafc', borderRadius: 10 }}>
-              <span style={{ color: '#64748b' }}>Khách hàng hôm nay</span>
-              <span style={{ fontWeight: 700, color: '#2563eb' }}>{stats.todayCustomers}</span>
-            </div>
+          <div style={s.overviewGrid}>
+            <div style={s.statRow}><span style={s.statLabel}>Tổng khách hàng</span><span style={s.statValue}>{stats.total}</span></div>
+            <div style={s.statRow}><span style={s.statLabel}>Tỷ lệ chuyển đổi</span><span style={s.statValueGreen}>{stats.conversionRate}%</span></div>
+            <div style={s.statRow}><span style={s.statLabel}>Đã nhắn tin</span><span style={s.statValuePurple}>{stats.messagedCount}</span></div>
+            <div style={s.statRow}><span style={s.statLabel}>Khách hàng hôm nay</span><span style={s.statValueBlue}>{stats.todayCustomers}</span></div>
           </div>
         </div>
       </div>

@@ -26,7 +26,7 @@ export function useCustomerDetail(customerId: string) {
     apiFetch<Template[]>('/api/templates').then(setTemplates).catch(() => {})
   }, [customerId, fetchCustomer])
 
-  const handleAction = async (action: string, note?: string, templateId?: string) => {
+  const handleAction = useCallback(async (action: string, note?: string, templateId?: string) => {
     await apiFetch(`/api/customers/${customerId}/action`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -34,7 +34,7 @@ export function useCustomerDetail(customerId: string) {
     })
     fetchCustomer()
     setSelectedTemplate(null)
-  }
+  }, [customerId, fetchCustomer])
 
   return {
     customer,

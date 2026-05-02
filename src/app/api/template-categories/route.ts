@@ -13,7 +13,7 @@ export async function GET() {
       include: { _count: { select: { templates: true } } },
       orderBy: { name: 'asc' },
     })
-    return NextResponse.json(categories)
+    return NextResponse.json(categories, { headers: { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=30' } })
   } catch {
     return NextResponse.json({ error: 'Lỗi máy chủ nội bộ' }, { status: 500 })
   }

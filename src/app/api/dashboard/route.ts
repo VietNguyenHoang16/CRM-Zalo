@@ -24,7 +24,7 @@ export async function GET() {
       messagedCount,
       total,
       conversionRate,
-    })
+    }, { headers: { 'Cache-Control': 'public, max-age=15, stale-while-revalidate=30' } })
   } catch {
     return NextResponse.json({ error: 'Lỗi máy chủ nội bộ' }, { status: 500 })
   }
