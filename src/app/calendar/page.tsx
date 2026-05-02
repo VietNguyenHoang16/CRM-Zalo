@@ -1,16 +1,11 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { apiFetch } from '@/lib/api'
-
-interface Appointment { id: string; scheduledAt: string; note: string | null; completed: boolean; customer: { name: string; phone: string } }
+import { useState } from 'react'
+import { useAppointments } from '@/hooks/queries'
 
 export default function CalendarPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
 
-  const fetchAppointments = () => apiFetch<Appointment[]>('/api/appointments').then(setAppointments).catch(() => setAppointments([]))
-
-  useEffect(() => { fetchAppointments() }, [])
+  const { data: appointments = [], isLoading } = useAppointments()
 
   const filtered = appointments.filter(a => a.scheduledAt.startsWith(selectedDate))
 
@@ -35,7 +30,11 @@ export default function CalendarPage() {
 
       <div className="card">
         <div className="card-title">Lịch hẹn ngày {new Date(selectedDate).toLocaleDateString('vi-VN')}</div>
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <p style={{ color: '#64748b' }}>Đang tải...</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div style={{ width: 64, height: 64, margin: '0 auto 16px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#94a3b8" width="32" height="32">

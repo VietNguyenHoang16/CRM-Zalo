@@ -1,9 +1,14 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { apiFetch, getErrorMessage } from '@/lib/api'
-
-interface Template { id: string; title: string; content: string; categoryId: string; category: { id: string; name: string } | null; createdAt: string }
-interface Category { id: string; code: string; name: string; _count: { templates: number } }
+import { useState } from 'react'
+import { getErrorMessage } from '@/lib/api'
+import {
+  useTemplatesByCategory,
+  useTemplateCategories,
+  useCreateTemplateCategory,
+  useDeleteTemplateCategory,
+  useCreateTemplate,
+  useDeleteTemplate,
+} from '@/hooks/queries'
 
 const s: Record<string, React.CSSProperties> = {
   layout: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, alignItems: 'start' },
@@ -43,7 +48,6 @@ const s: Record<string, React.CSSProperties> = {
   tplContent: { fontSize: 13 },
   emptyTpl: { textAlign: 'center' as const, padding: '60px 0' },
   emptyTplText: { color: '#64748b', fontSize: 14 },
-  // confirm dialog styles
   backdrop: { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   dlg: { background: 'white', borderRadius: 16, padding: 28, maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
   dlgHead: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 },
@@ -58,8 +62,6 @@ const s: Record<string, React.CSSProperties> = {
 }
 
 export default function TemplatesPage() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [templates, setTemplates] = useState<Template[]>([])
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('')
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [categoryForm, setCategoryForm] = useState({ code: '', name: '' })
@@ -68,64 +70,46 @@ export default function TemplatesPage() {
   const [templateForm, setTemplateForm] = useState({ title: '', content: '' })
   const [templateError, setTemplateError] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Category | null>(null)
-  const [deletingCategory, setDeletingCategory] = useState(false)
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<{ id: string; name: string } | null>(null)
 
-  const fetchCategories = useCallback(() => {
-    apiFetch<Category[]>('/api/template-categories').then(setCategories).catch(() => {})
-  }, [])
-
-  const fetchTemplates = useCallback(() => {
-    const params = selectedCategoryId ? `?categoryId=${selectedCategoryId}` : ''
-    apiFetch<Template[]>(`/api/templates${params}`).then(setTemplates).catch(() => {})
-  }, [selectedCategoryId])
-
-  useEffect(() => { fetchCategories() }, [fetchCategories])
-  useEffect(() => { fetchTemplates() }, [fetchTemplates])
+  const { data: categories = [], isLoading: catLoading } = useTemplateCategories()
+  const { data: templates = [], isLoading: tplLoading } = useTemplatesByCategory(selectedCategoryId)
+  const createCategory = useCreateTemplateCategory()
+  const deleteCategory = useDeleteTemplateCategory()
+  const createTemplate = useCreateTemplate()
+  const deleteTemplate = useDeleteTemplate()
 
   const addCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     setCategoryError('')
     try {
-      await apiFetch('/api/template-categories', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(categoryForm)
-      })
+      await createCategory.mutateAsync(categoryForm)
       setCategoryForm({ code: '', name: '' })
       setShowAddCategory(false)
-      fetchCategories()
     } catch (e: unknown) { setCategoryError(getErrorMessage(e)) }
   }
 
   const confirmDeleteCategory = async () => {
     if (!deleteCategoryTarget) return
-    setDeletingCategory(true)
     try {
-      await apiFetch(`/api/template-categories/${deleteCategoryTarget.id}`, { method: 'DELETE' })
-      setDeleteCategoryTarget(null)
-      setDeletingCategory(false)
+      await deleteCategory.mutateAsync(deleteCategoryTarget.id)
       if (selectedCategoryId === deleteCategoryTarget.id) setSelectedCategoryId('')
-      fetchCategories()
-    } catch { setDeletingCategory(false) }
+      setDeleteCategoryTarget(null)
+    } catch { /* handled by mutation */ }
   }
 
   const addTemplate = async (e: React.FormEvent) => {
     e.preventDefault()
     setTemplateError('')
     try {
-      await apiFetch('/api/templates', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...templateForm, categoryId: selectedCategoryId })
-      })
+      await createTemplate.mutateAsync({ ...templateForm, categoryId: selectedCategoryId })
       setTemplateForm({ title: '', content: '' })
       setShowAddTemplate(false)
-      fetchTemplates()
-      fetchCategories()
     } catch (e: unknown) { setTemplateError(getErrorMessage(e)) }
   }
 
-  const deleteTemplate = async (id: string) => {
-    await apiFetch(`/api/templates/${id}`, { method: 'DELETE' })
-    fetchTemplates()
-    fetchCategories()
+  const removeTemplate = async (id: string) => {
+    await deleteTemplate.mutateAsync(id)
   }
 
   const copyToClipboard = (content: string, id: string) => {
@@ -162,29 +146,35 @@ export default function TemplatesPage() {
                 <input className="input" placeholder="Mã danh mục (VD: CHAO_MOI)" style={s.catInput} value={categoryForm.code} onChange={e => setCategoryForm({...categoryForm, code: e.target.value})} required />
                 <input className="input" placeholder="Tên danh mục (VD: Chào mời)" style={s.catInput} value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} required />
                 <div style={s.catFormBtns}>
-                  <button type="submit" className="btn btn-primary" style={s.catSaveBtn}>Lưu</button>
+                  <button type="submit" className="btn btn-primary" style={s.catSaveBtn} disabled={createCategory.isPending}>
+                    {createCategory.isPending ? 'Đang lưu...' : 'Lưu'}
+                  </button>
                   <button type="button" onClick={() => { setShowAddCategory(false); setCategoryError('') }} className="btn btn-secondary" style={s.catCancelBtn}>Hủy</button>
                 </div>
               </div>
             </form>
           )}
 
-          <div style={s.catList}>
-            {categories.map(c => (
-              <div key={c.id} onClick={() => setSelectedCategoryId(c.id)} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
-                background: selectedCategoryId === c.id ? '#eff6ff' : 'transparent',
-                border: selectedCategoryId === c.id ? '1px solid #2563eb' : '1px solid transparent',
-                fontWeight: selectedCategoryId === c.id ? 600 : 400, transition: 'all 0.15s ease',
-              }}>
-                <span style={{ fontSize: 14 }}>{c.name}<span style={s.catCount}>({c._count.templates})</span></span>
-                <button onClick={(e) => { e.stopPropagation(); setDeleteCategoryTarget(c) }} title="Xóa danh mục" style={s.catDelBtn}>✕</button>
-              </div>
-            ))}
-          </div>
+          {catLoading ? (
+            <p style={s.emptyCat}>Đang tải...</p>
+          ) : (
+            <div style={s.catList}>
+              {categories.map(c => (
+                <div key={c.id} onClick={() => setSelectedCategoryId(c.id)} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '10px 14px', borderRadius: 10, cursor: 'pointer',
+                  background: selectedCategoryId === c.id ? '#eff6ff' : 'transparent',
+                  border: selectedCategoryId === c.id ? '1px solid #2563eb' : '1px solid transparent',
+                  fontWeight: selectedCategoryId === c.id ? 600 : 400, transition: 'all 0.15s ease',
+                }}>
+                  <span style={{ fontSize: 14 }}>{c.name}<span style={s.catCount}>({c._count.templates})</span></span>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteCategoryTarget(c) }} title="Xóa danh mục" style={s.catDelBtn}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
 
-          {categories.length === 0 && <p style={s.emptyCat}>Chưa có danh mục nào</p>}
+          {!catLoading && categories.length === 0 && <p style={s.emptyCat}>Chưa có danh mục nào</p>}
         </div>
 
         <div>
@@ -226,30 +216,34 @@ export default function TemplatesPage() {
                       </div>
                     </div>
                     <div style={s.tformBtns}>
-                      <button type="submit" className="btn btn-primary">Lưu mẫu</button>
+                      <button type="submit" className="btn btn-primary" disabled={createTemplate.isPending}>
+                        {createTemplate.isPending ? 'Đang lưu...' : 'Lưu mẫu'}
+                      </button>
                       <button type="button" onClick={() => { setShowAddTemplate(false); setTemplateError('') }} className="btn btn-secondary">Hủy</button>
                     </div>
                   </form>
                 </div>
               )}
 
-              <div style={s.tplGrid}>
-                {templates.map(t => (
-                  <div key={t.id} className="template-card">
-                    <div style={s.tplCardTop}>
-                      <h4 style={s.tplCardTitle}>{t.title}</h4>
-                      <div style={s.tplBtns}>
-                        <button onClick={() => copyToClipboard(t.content, t.id)} className="btn btn-primary" style={s.copyBtn}>{copiedId === t.id ? 'Đã copy!' : 'Copy'}</button>
-                        <button onClick={() => deleteTemplate(t.id)} style={s.tplDelBtn} title="Xóa mẫu">✕</button>
-                      </div>
-                    </div>
-                    <div className="template-content" style={s.tplContent}>{t.content}</div>
-                  </div>
-                ))}
-              </div>
-
-              {templates.length === 0 && (
+              {tplLoading ? (
+                <div className="card" style={s.emptyTpl}><p style={s.emptyTplText}>Đang tải...</p></div>
+              ) : templates.length === 0 ? (
                 <div className="card" style={s.emptyTpl}><p style={s.emptyTplText}>Chưa có mẫu tin nhắn nào trong danh mục này</p></div>
+              ) : (
+                <div style={s.tplGrid}>
+                  {templates.map(t => (
+                    <div key={t.id} className="template-card">
+                      <div style={s.tplCardTop}>
+                        <h4 style={s.tplCardTitle}>{t.title}</h4>
+                        <div style={s.tplBtns}>
+                          <button onClick={() => copyToClipboard(t.content, t.id)} className="btn btn-primary" style={s.copyBtn}>{copiedId === t.id ? 'Đã copy!' : 'Copy'}</button>
+                          <button onClick={() => removeTemplate(t.id)} style={s.tplDelBtn} title="Xóa mẫu">✕</button>
+                        </div>
+                      </div>
+                      <div className="template-content" style={s.tplContent}>{t.content}</div>
+                    </div>
+                  ))}
+                </div>
               )}
             </>
           )}
@@ -257,7 +251,7 @@ export default function TemplatesPage() {
       </div>
 
       {deleteCategoryTarget && (
-        <div onClick={() => { if (!deletingCategory) setDeleteCategoryTarget(null) }} style={s.backdrop}>
+        <div onClick={() => { if (!deleteCategory.isPending) setDeleteCategoryTarget(null) }} style={s.backdrop}>
           <div onClick={e => e.stopPropagation()} style={s.dlg}>
             <div style={s.dlgHead}>
               <div style={s.warnIcon}>
@@ -270,8 +264,8 @@ export default function TemplatesPage() {
             <p style={s.dlgBody}>Bạn có chắc chắn muốn xóa danh mục <strong>{deleteCategoryTarget.name}</strong> không?</p>
             <p style={s.dlgSub}>Tất cả mẫu tin nhắn trong danh mục này cũng sẽ bị xóa. Hành động này không thể hoàn tác.</p>
             <div style={s.dlgBtns}>
-              <button onClick={() => setDeleteCategoryTarget(null)} disabled={deletingCategory} className="btn btn-secondary">Hủy</button>
-              <button onClick={confirmDeleteCategory} disabled={deletingCategory} style={s.dangerBtn}>{deletingCategory ? 'Đang xóa...' : 'Xóa'}</button>
+              <button onClick={() => setDeleteCategoryTarget(null)} disabled={deleteCategory.isPending} className="btn btn-secondary">Hủy</button>
+              <button onClick={confirmDeleteCategory} disabled={deleteCategory.isPending} style={s.dangerBtn}>{deleteCategory.isPending ? 'Đang xóa...' : 'Xóa'}</button>
             </div>
           </div>
         </div>

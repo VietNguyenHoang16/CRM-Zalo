@@ -1,46 +1,29 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { apiFetch } from '@/lib/api'
+import { useState, useCallback } from 'react'
+import { useCustomerDetail as useCustomerDetailQuery, useTemplates, useCustomerAction } from '@/hooks/queries'
 
-interface Customer {
-  id: string; name: string; phone: string; email: string | null; address: string | null; note: string | null
-  status: string; source: { name: string } | null; zaloSentAt: string | null; createdAt: string
-  logs: Array<{ id: string; action: string; note: string | null; createdAt: string; template: { title: string; content: string } | null }>
-}
-
-interface Template {
-  id: string; title: string; content: string; category: { name: string } | null
+interface SelectedTemplate {
+  id: string; title: string; content: string
 }
 
 export function useCustomerDetail(customerId: string) {
-  const [customer, setCustomer] = useState<Customer | null>(null)
-  const [templates, setTemplates] = useState<Template[]>([])
-  const [selectedTemplate, setSelectedTemplate] = useState<{ id: string; title: string; content: string } | null>(null)
+  const { data: customer, isLoading: customerLoading } = useCustomerDetailQuery(customerId)
+  const { data: templates = [], isLoading: templatesLoading } = useTemplates()
+  const [selectedTemplate, setSelectedTemplate] = useState<SelectedTemplate | null>(null)
+  const action = useCustomerAction(customerId)
 
-  const fetchCustomer = useCallback(() => {
-    apiFetch<Customer>(`/api/customers/${customerId}`).then(setCustomer).catch(() => {})
-  }, [customerId])
-
-  useEffect(() => {
-    fetchCustomer()
-    apiFetch<Template[]>('/api/templates').then(setTemplates).catch(() => {})
-  }, [customerId, fetchCustomer])
-
-  const handleAction = useCallback(async (action: string, note?: string, templateId?: string) => {
-    await apiFetch(`/api/customers/${customerId}/action`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, note, templateId }),
-    })
-    fetchCustomer()
+  const handleAction = useCallback(async (actionType: string, note?: string, templateId?: string) => {
+    await action.mutateAsync({ action: actionType, note, templateId })
     setSelectedTemplate(null)
-  }, [customerId, fetchCustomer])
+  }, [action])
 
   return {
-    customer,
+    customer: customer ?? null,
     templates,
     selectedTemplate,
     setSelectedTemplate,
     handleAction,
+    isLoading: customerLoading || templatesLoading,
+    isActionPending: action.isPending,
   }
 }

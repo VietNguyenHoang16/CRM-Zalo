@@ -1,26 +1,21 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { apiFetch } from '@/lib/api'
-
-interface Settings { tgChoAloSauKB: number; tgChoNhantinSauGoiKhongNghe: number; tgLapLichNhantinLan2: number }
+import { useState } from 'react'
+import { useSettings, useUpdateSettings } from '@/hooks/queries'
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>({ tgChoAloSauKB: 60, tgChoNhantinSauGoiKhongNghe: 30, tgLapLichNhantinLan2: 2 })
+  const { data: serverSettings, isLoading } = useSettings()
+  const [localSettings, setLocalSettings] = useState<{ tgChoAloSauKB: number; tgChoNhantinSauGoiKhongNghe: number; tgLapLichNhantinLan2: number } | null>(null)
   const [saved, setSaved] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    apiFetch<Settings>('/api/settings').then(data => {
-      setSettings({ tgChoAloSauKB: data.tgChoAloSauKB, tgChoNhantinSauGoiKhongNghe: data.tgChoNhantinSauGoiKhongNghe, tgLapLichNhantinLan2: data.tgLapLichNhantinLan2 })
-      setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [])
+  const updateSettings = useUpdateSettings()
+
+  const settings = localSettings ?? serverSettings ?? { tgChoAloSauKB: 60, tgChoNhantinSauGoiKhongNghe: 30, tgLapLichNhantinLan2: 2 }
 
   const handleSave = async () => {
     setError('')
     try {
-      await apiFetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) })
+      await updateSettings.mutateAsync(settings)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (e: unknown) {
@@ -28,7 +23,11 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Đang tải...</div>
+  const update = (field: 'tgChoAloSauKB' | 'tgChoNhantinSauGoiKhongNghe' | 'tgLapLichNhantinLan2', value: number) => {
+    setLocalSettings(prev => ({ ...(prev ?? settings), [field]: value }))
+  }
+
+  if (isLoading) return <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Đang tải...</div>
 
   return (
     <div>
@@ -44,25 +43,27 @@ export default function SettingsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           <div>
             <label className="label">Thời gian chờ alo sau kết bạn Zalo (phút)</label>
-            <input type="number" className="input" style={{ maxWidth: 200 }} value={settings.tgChoAloSauKB} onChange={e => setSettings({...settings, tgChoAloSauKB: Number(e.target.value)})} />
+            <input type="number" className="input" style={{ maxWidth: 200 }} value={settings.tgChoAloSauKB} onChange={e => update('tgChoAloSauKB', Number(e.target.value))} />
             <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 6 }}>Sau khi gửi lời mời KB Zalo, nếu khách chưa đồng ý sẽ nhắc gọi alo. Mặc định: 60 phút.</p>
           </div>
 
           <div>
             <label className="label">Thời gian chờ nhắn tin sau gọi không nghe (phút)</label>
-            <input type="number" className="input" style={{ maxWidth: 200 }} value={settings.tgChoNhantinSauGoiKhongNghe} onChange={e => setSettings({...settings, tgChoNhantinSauGoiKhongNghe: Number(e.target.value)})} />
+            <input type="number" className="input" style={{ maxWidth: 200 }} value={settings.tgChoNhantinSauGoiKhongNghe} onChange={e => update('tgChoNhantinSauGoiKhongNghe', Number(e.target.value))} />
             <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 6 }}>Khi gọi không trả lời, sau bao lâu sẽ nhắc nhắn tin. Mặc định: 30 phút.</p>
           </div>
 
           <div>
             <label className="label">Thời gian lên lịch nhắn tin lần 2 (ngày)</label>
-            <input type="number" className="input" style={{ maxWidth: 200 }} value={settings.tgLapLichNhantinLan2} onChange={e => setSettings({...settings, tgLapLichNhantinLan2: Number(e.target.value)})} />
+            <input type="number" className="input" style={{ maxWidth: 200 }} value={settings.tgLapLichNhantinLan2} onChange={e => update('tgLapLichNhantinLan2', Number(e.target.value))} />
             <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 6 }}>Sau khi nhắn tin lần 1 mà chưa phản hồi, nhắc nhắn lại sau. Mặc định: 2 ngày.</p>
           </div>
         </div>
 
-        <button onClick={handleSave} className="btn btn-primary" style={{ marginTop: 32 }}>
-          {saved ? (
+        <button onClick={handleSave} className="btn btn-primary" style={{ marginTop: 32 }} disabled={updateSettings.isPending}>
+          {updateSettings.isPending ? (
+            'Đang lưu...'
+          ) : saved ? (
             <>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" width="18" height="18">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />

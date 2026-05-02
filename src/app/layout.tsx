@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
+import QueryProvider from "@/lib/query-provider";
 import AppShell from "@/components/AppShell";
 
 const font = Be_Vietnam_Pro({
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={font.className}>
-        <AppShell>{children}</AppShell>
+        <QueryProvider>
+          <AppShell>{children}</AppShell>
+        </QueryProvider>
       </body>
     </html>
   );

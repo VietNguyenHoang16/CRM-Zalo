@@ -1,13 +1,9 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import CustomerModal from '@/components/CustomerModal'
-import { apiFetch, getErrorMessage } from '@/lib/api'
+import { getErrorMessage } from '@/lib/api'
 import { STATUS_LABELS } from '@/lib/utils'
-
-interface Customer {
-  id: string; name: string; phone: string; email: string | null; address: string | null; note: string | null
-  status: string; source: { name: string } | null; createdAt: string
-}
+import { useCustomers, useSources, useCreateCustomer, useDeleteCustomer } from '@/hooks/queries'
 
 const statusOptions = Object.entries(STATUS_LABELS)
 
@@ -51,60 +47,44 @@ const s: Record<string, React.CSSProperties> = {
 }
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [sources, setSources] = useState<Array<{id: string, name: string}>>([])
   const [showForm, setShowForm] = useState(false)
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSource, setFilterSource] = useState('')
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', note: '', sourceId: '' })
   const [error, setError] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null)
-  const [deleting, setDeleting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; phone: string } | null>(null)
 
-  const fetchSources = useCallback(() => {
-    apiFetch<Array<{id: string, name: string}>>('/api/sources').then(setSources).catch(() => {})
-  }, [])
-
-  const fetchCustomers = useCallback(() => {
-    const params = new URLSearchParams()
-    if (filterStatus) params.set('status', filterStatus)
-    if (filterSource) params.set('sourceId', filterSource)
-    apiFetch<Customer[]>(`/api/customers${params.toString() ? '?' + params.toString() : ''}`).then(setCustomers).catch(() => {})
-  }, [filterStatus, filterSource])
-
-  const confirmDelete = useCallback(async () => {
-    if (!deleteTarget) return
-    const targetId = deleteTarget.id
-    const prevCustomers = customers
-    setDeleteTarget(null)
-    setDeleting(false)
-    setCustomers(prev => prev.filter(c => c.id !== targetId))
-    try {
-      await apiFetch(`/api/customers/${targetId}`, { method: 'DELETE' })
-    } catch {
-      setCustomers(prevCustomers)
-    }
-  }, [deleteTarget, customers])
+  const { data: customers = [], isLoading: customersLoading } = useCustomers(
+    (filterStatus || filterSource) ? { status: filterStatus || undefined, sourceId: filterSource || undefined } : undefined
+  )
+  const { data: sources = [] } = useSources()
+  const createCustomer = useCreateCustomer()
+  const deleteCustomer = useDeleteCustomer()
 
   const closeModal = useCallback(() => setSelectedCustomerId(null), [])
   const cancelDelete = useCallback(() => setDeleteTarget(null), [])
-
-  useEffect(() => { fetchSources() }, [fetchSources])
-  useEffect(() => { fetchCustomers() }, [fetchCustomers])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     try {
-      await apiFetch('/api/customers', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form)
-      })
+      await createCustomer.mutateAsync(form)
       setForm({ name: '', phone: '', email: '', address: '', note: '', sourceId: '' })
       setShowForm(false)
-      fetchCustomers()
     } catch (e: unknown) {
       setError(getErrorMessage(e))
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    const targetId = deleteTarget.id
+    setDeleteTarget(null)
+    try {
+      await deleteCustomer.mutateAsync(targetId)
+    } catch {
+      // query will auto-refetch on error since onError revalidates
     }
   }
 
@@ -160,7 +140,9 @@ export default function CustomersPage() {
               </div>
             </div>
             <div style={s.btnRow}>
-              <button type="submit" className="btn btn-primary">Lưu khách hàng</button>
+              <button type="submit" className="btn btn-primary" disabled={createCustomer.isPending}>
+                {createCustomer.isPending ? 'Đang lưu...' : 'Lưu khách hàng'}
+              </button>
               <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Hủy</button>
             </div>
           </form>
@@ -183,35 +165,9 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div style={s.grid}>
-        {customers.map(c => (
-          <div key={c.id} style={s.cardWrap}>
-            <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }} title="Xóa khách hàng" style={s.delBtn}>✕</button>
-            <div onClick={() => setSelectedCustomerId(c.id)} style={s.clickable}>
-            <div className="customer-card">
-              <div style={s.cardTop}>
-                <div style={s.avatarRow}>
-                  <div style={s.avatar}>{c.name.charAt(0)}</div>
-                  <div>
-                    <div style={s.cardName}>{c.name}</div>
-                    <div style={s.cardPhone}>{c.phone}</div>
-                  </div>
-                </div>
-                <span className={`status-badge status-${c.status}`}>{STATUS_LABELS[c.status as keyof typeof STATUS_LABELS] || c.status}</span>
-              </div>
-              <div style={s.sourceRow}>
-                {c.source && <span className="source-badge">{c.source.name}</span>}
-              </div>
-              <div style={s.cardDate}>
-                Ngày tạo: {new Date(c.createdAt).toLocaleDateString('vi-VN')}
-              </div>
-            </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {customers.length === 0 && (
+      {customersLoading ? (
+        <div style={s.emptyCard}><p style={s.emptyTitle}>Đang tải...</p></div>
+      ) : customers.length === 0 ? (
         <div className="card" style={s.emptyCard}>
           <div style={s.emptyIcon}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#94a3b8" width="32" height="32">
@@ -220,6 +176,34 @@ export default function CustomersPage() {
           </div>
           <p style={s.emptyTitle}>Chưa có khách hàng nào</p>
           <p style={s.emptySubtitle}>Bắt đầu bằng cách thêm khách hàng đầu tiên</p>
+        </div>
+      ) : (
+        <div style={s.grid}>
+          {customers.map(c => (
+            <div key={c.id} style={s.cardWrap}>
+              <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(c) }} title="Xóa khách hàng" style={s.delBtn}>✕</button>
+              <div onClick={() => setSelectedCustomerId(c.id)} style={s.clickable}>
+              <div className="customer-card">
+                <div style={s.cardTop}>
+                  <div style={s.avatarRow}>
+                    <div style={s.avatar}>{c.name.charAt(0)}</div>
+                    <div>
+                      <div style={s.cardName}>{c.name}</div>
+                      <div style={s.cardPhone}>{c.phone}</div>
+                    </div>
+                  </div>
+                  <span className={`status-badge status-${c.status}`}>{STATUS_LABELS[c.status as keyof typeof STATUS_LABELS] || c.status}</span>
+                </div>
+                <div style={s.sourceRow}>
+                  {c.source && <span className="source-badge">{c.source.name}</span>}
+                </div>
+                <div style={s.cardDate}>
+                  Ngày tạo: {new Date(c.createdAt).toLocaleDateString('vi-VN')}
+                </div>
+              </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -243,9 +227,9 @@ export default function CustomersPage() {
             </p>
             <p style={s.modalSub}>Hành động này không thể hoàn tác. Tất cả lịch sử và lịch hẹn liên quan cũng sẽ bị xóa.</p>
             <div style={s.modalBtns}>
-              <button onClick={() => setDeleteTarget(null)} disabled={deleting} className="btn btn-secondary">Hủy</button>
-              <button onClick={confirmDelete} disabled={deleting} style={s.delConfirm}>
-                {deleting ? 'Đang xóa...' : 'Xóa'}
+              <button onClick={() => setDeleteTarget(null)} disabled={deleteCustomer.isPending} className="btn btn-secondary">Hủy</button>
+              <button onClick={handleDelete} disabled={deleteCustomer.isPending} style={s.delConfirm}>
+                {deleteCustomer.isPending ? 'Đang xóa...' : 'Xóa'}
               </button>
             </div>
           </div>

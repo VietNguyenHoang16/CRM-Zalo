@@ -1,25 +1,22 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { apiFetch, getErrorMessage } from '@/lib/api'
-
-interface Source { id: string; code: string; name: string }
+import { useState } from 'react'
+import { getErrorMessage } from '@/lib/api'
+import { useSources, useCreateSource } from '@/hooks/queries'
 
 export default function SourcesPage() {
-  const [sources, setSources] = useState<Source[]>([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ code: '', name: '' })
   const [error, setError] = useState('')
 
-  const fetchSources = () => apiFetch<Source[]>('/api/sources').then(setSources).catch(() => {})
-
-  useEffect(() => { fetchSources() }, [])
+  const { data: sources = [], isLoading } = useSources()
+  const createSource = useCreateSource()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     try {
-      await apiFetch('/api/sources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-      setForm({ code: '', name: '' }); setShowForm(false); fetchSources()
+      await createSource.mutateAsync(form)
+      setForm({ code: '', name: '' }); setShowForm(false)
     } catch (e: unknown) {
       setError(getErrorMessage(e))
     }
@@ -58,7 +55,9 @@ export default function SourcesPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-              <button type="submit" className="btn btn-primary">Lưu</button>
+              <button type="submit" className="btn btn-primary" disabled={createSource.isPending}>
+                {createSource.isPending ? 'Đang lưu...' : 'Lưu'}
+              </button>
               <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">Hủy</button>
             </div>
           </form>
@@ -66,7 +65,11 @@ export default function SourcesPage() {
       )}
 
       <div className="table-container">
-        {sources.length === 0 ? (
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <p style={{ color: '#64748b', fontSize: 15 }}>Đang tải...</p>
+          </div>
+        ) : sources.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <div style={{ width: 64, height: 64, margin: '0 auto 16px', background: '#f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="#94a3b8" width="32" height="32">
